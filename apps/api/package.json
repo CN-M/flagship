@@ -1,0 +1,52 @@
+{
+	"name": "api",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"build": "npx tsc",
+		"watch": "npx tsc --watch",
+		"start": "node dist/server/server.js",
+		"dev-server": "nodemon server/server.ts",
+		"dev": "pnpm watch && \"ts-node server/server.ts\"",
+
+		"prisma:generate": "prisma generate",
+		"prisma:studio": "prisma studio",
+		"prisma:migrate": "prisma migrate dev",
+		"prisma:push": "prisma db push",
+		"prisma:deploy": "prisma migrate deploy",
+		"prisma:reset": "prisma migrate reset",
+		"prisma:seed": "prisma db seed"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"bcryptjs": "^3.0.2",
+		"colors": "^1.4.0",
+		"compression": "^1.8.1",
+		"cookie-parser": "^1.4.7",
+		"cors": "^2.8.5",
+		"dotenv": "^17.2.2",
+		"express": "^5.1.0",
+		"helmet": "^8.1.0",
+		"http-errors": "^2.0.0",
+		"jsonwebtoken": "^9.0.2",
+		"morgan": "^1.10.1"
+	},
+	"devDependencies": {
+		"@flagship/typescript-config": "workspace:*",
+		"@types/compression": "^1.8.1",
+		"@types/cookie-parser": "^1.4.9",
+		"@types/cors": "^2.8.19",
+		"@types/express": "^5.0.3",
+		"@types/http-errors": "^2.0.5",
+		"@types/jsonwebtoken": "^9.0.10",
+		"@types/morgan": "^1.9.10",
+		"@types/node": "^22.15.3",
+		"prisma": "^6.16.2",
+		"ts-node": "^10.9.2",
+		"typescript": "^5.9.2"
+	}
+}

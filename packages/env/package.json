@@ -1,0 +1,24 @@
+{
+	"name": "@flagship/env",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"type": "module",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"exports": {
+		".": "./index.ts"
+	},
+	"dependencies": {
+		"@t3-oss/env-core": "^0.13.8",
+		"@types/node": "^22.15.3",
+		"zod": "^4.1.11"
+	},
+	"devDependencies": {
+		"@flagship/typescript-config": "workspace:*"
+	}
+}
