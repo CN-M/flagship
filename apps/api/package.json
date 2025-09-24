@@ -2,6 +2,7 @@
 	"name": "api",
 	"version": "1.0.0",
 	"description": "",
+	"private": "true",
 	"main": "index.js",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
@@ -24,6 +25,7 @@
 	"dependencies": {
 		"@flagship/db": "workspace:*",
 		"@flagship/env": "workspace:*",
+		"argon2": "^0.44.0",
 		"bcryptjs": "^3.0.2",
 		"colors": "^1.4.0",
 		"compression": "^1.8.1",
@@ -38,8 +40,8 @@
 		"zod": "^4.1.11"
 	},
 	"devDependencies": {
-		"@flagship/typescript-config": "workspace:*",
 		"@flagship/schemas": "workspace:*",
+		"@flagship/typescript-config": "workspace:*",
 		"@types/compression": "^1.8.1",
 		"@types/cookie-parser": "^1.4.9",
 		"@types/cors": "^2.8.19",

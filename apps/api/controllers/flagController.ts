@@ -1,7 +1,7 @@
 import type { createFlagSchema, updateFlagSchema } from "@flagship/schemas";
 import type { Request, Response } from "express";
 import type * as z from "zod";
-import { and, db, eq, flags } from "../config/db";
+import { and, db, eq, flags, userTenants } from "../config/db";
 
 interface TypedRequest<T> extends Request {
 	body: T;
@@ -10,17 +10,31 @@ interface TypedRequest<T> extends Request {
 type UpdateFlagBody = z.infer<typeof updateFlagSchema>;
 type CreateFlagBody = z.infer<typeof createFlagSchema>;
 
-export const getFlag = async (req: Request, res: Response) => {
-	if (!req.tenant) {
+// This should require an API key
+export const evaluateFlag = async (req: Request, res: Response) => {
+	if (!req.user) {
 		return res
 			.status(400)
 			.json({ error: "Not authoriized, please login or register" });
 	}
 
-	const { id: tenantId } = req.tenant;
+	const { id } = req.user;
+
 	const { id: flagId } = req.params;
 
 	try {
+		const [organization] = await db
+			.select({ tenantId: userTenants.tenantId })
+			.from(userTenants)
+			.where(eq(userTenants.userId, id))
+			.limit(1);
+
+		if (!organization) {
+			return res
+				.status(401)
+				.json({ error: "Not authoriized, user belongs to no organization" });
+		}
+
 		const [flag] = await db
 			.select({
 				id: flags.id,
@@ -30,7 +44,9 @@ export const getFlag = async (req: Request, res: Response) => {
 				enabled: flags.enabled,
 			})
 			.from(flags)
-			.where(and(eq(flags.id, flagId), eq(flags.tenantId, tenantId)))
+			.where(
+				and(eq(flags.id, flagId), eq(flags.tenantId, organization.tenantId)),
+			)
 			.limit(1);
 
 		res.status(200).json(flag);
@@ -41,15 +57,27 @@ export const getFlag = async (req: Request, res: Response) => {
 };
 
 export const getTenantFlags = async (req: Request, res: Response) => {
-	if (!req.tenant) {
+	if (!req.user) {
 		return res
-			.status(400)
+			.status(401)
 			.json({ error: "Not authoriized, please login or register" });
 	}
 
-	const { id } = req.tenant;
+	const { id } = req.user;
 
 	try {
+		const [organization] = await db
+			.select({ tenantId: userTenants.tenantId, role: userTenants.role })
+			.from(userTenants)
+			.where(eq(userTenants.userId, id))
+			.limit(1);
+
+		if (!organization) {
+			return res
+				.status(401)
+				.json({ error: "Not authoriized, user belongs to no organization" });
+		}
+
 		const tenantFlags = await db
 			.select({
 				id: flags.id,
@@ -59,7 +87,7 @@ export const getTenantFlags = async (req: Request, res: Response) => {
 				enabled: flags.enabled,
 			})
 			.from(flags)
-			.where(eq(flags.tenantId, id));
+			.where(eq(flags.tenantId, organization.tenantId));
 
 		res.status(200).json(tenantFlags);
 	} catch (err) {
@@ -72,20 +100,38 @@ export const createFlag = async (
 	req: TypedRequest<CreateFlagBody>,
 	res: Response,
 ) => {
-	if (!req.tenant) {
+	if (!req.user) {
 		return res
 			.status(400)
 			.json({ error: "Not authoriized, please login or register" });
 	}
 
-	const { id: tenantId } = req.tenant;
+	const { id } = req.user;
 
 	const body = req.body;
 
 	try {
+		const [organization] = await db
+			.select({ tenantId: userTenants.tenantId, role: userTenants.role })
+			.from(userTenants)
+			.where(eq(userTenants.userId, id))
+			.limit(1);
+
+		if (!organization) {
+			return res
+				.status(401)
+				.json({ error: "Not authoriized, user belongs to no organization" });
+		}
+
+		const { role } = organization;
+
+		if (role === "civilian") {
+			return res.status(403).json({ error: "Insufficient permissions." });
+		}
+
 		const [newFlag] = await db
 			.insert(flags)
-			.values({ ...body, tenantId })
+			.values({ ...body, tenantId: organization.tenantId })
 			.returning({
 				id: flags.id,
 				key: flags.key,
@@ -105,23 +151,34 @@ export const updateFlag = async (
 	req: TypedRequest<UpdateFlagBody>,
 	res: Response,
 ) => {
-	if (!req.tenant) {
+	if (!req.user) {
 		return res
 			.status(400)
 			.json({ error: "Not authoriized, please login or register" });
 	}
 
-	const body = req.body;
-
-	// Check if there's anything to update
-	if (Object.keys(body).length === 0) {
-		return res.status(400).json({ error: "No fields to update" });
-	}
-
-	const { id: tenantId } = req.tenant;
+	const { id } = req.user;
 	const { id: flagId } = req.params;
 
 	try {
+		const [organization] = await db
+			.select({ tenantId: userTenants.tenantId, role: userTenants.role })
+			.from(userTenants)
+			.where(eq(userTenants.userId, id))
+			.limit(1);
+
+		if (!organization) {
+			return res
+				.status(401)
+				.json({ error: "Not authoriized, user belongs to no organization" });
+		}
+
+		const { role } = organization;
+
+		if (role === "civilian") {
+			return res.status(403).json({ error: "Insufficient permissions." });
+		}
+
 		const [flag] = await db
 			.select({
 				id: flags.id,
@@ -131,17 +188,23 @@ export const updateFlag = async (
 				enabled: flags.enabled,
 			})
 			.from(flags)
-			.where(and(eq(flags.id, flagId), eq(flags.tenantId, tenantId)))
+			.where(
+				and(eq(flags.id, flagId), eq(flags.tenantId, organization.tenantId)),
+			)
 			.limit(1);
 
 		if (!flag) {
 			return res.status(404).json({ error: "Flag not found" });
 		}
 
+		const body = req.body;
+
 		const [updatedFlag] = await db
 			.update(flags)
 			.set({ ...body })
-			.where(and(eq(flags.id, flagId), eq(flags.tenantId, tenantId)))
+			.where(
+				and(eq(flags.id, flagId), eq(flags.tenantId, organization.tenantId)),
+			)
 			.returning({
 				id: flags.id,
 				key: flags.key,
@@ -160,18 +223,38 @@ export const updateFlag = async (
 export const deleteFlag = async (req: Request, res: Response) => {
 	const { id: flagId } = req.params;
 
-	if (!req.tenant) {
+	if (!req.user) {
 		return res
 			.status(400)
 			.json({ error: "Not authoriized, please login or register" });
 	}
 
-	const { id: tenantId } = req.tenant;
+	const { id } = req.user;
 
 	try {
+		const [organization] = await db
+			.select({ tenantId: userTenants.tenantId, role: userTenants.role })
+			.from(userTenants)
+			.where(eq(userTenants.userId, id))
+			.limit(1);
+
+		if (!organization) {
+			return res
+				.status(401)
+				.json({ error: "Not authoriized, user belongs to no organization" });
+		}
+
+		const { role } = organization;
+
+		if (role === "civilian") {
+			return res.status(403).json({ error: "Insufficient permissions." });
+		}
+
 		const [deletedFlag] = await db
 			.delete(flags)
-			.where(and(eq(flags.id, flagId), eq(flags.tenantId, tenantId)))
+			.where(
+				and(eq(flags.id, flagId), eq(flags.tenantId, organization.tenantId)),
+			)
 			.returning({
 				id: flags.id,
 				key: flags.key,

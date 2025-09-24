@@ -1,0 +1,27 @@
+{
+	"name": "@cn-m/flagship",
+	"version": "0.0.1",
+	"description": "Feature Flag SDK",
+	"main": "dist/index.js",
+	"module": "dist/index.esm.js",
+	"types": "dist/index.d.ts",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"build": "tsc --project tsconfig.json",
+		"prepublishOnly": "pnpm run build"
+	},
+	"keywords": [
+		"feature-flag",
+		"sdk",
+		"flagship",
+		"typescript"
+	],
+	"author": "CN-M",
+	"license": "MIT",
+	"publishConfig": {
+		"access": "public"
+	}
+}

@@ -1,57 +1,65 @@
-import bcrypt from "bcryptjs";
+import type { userLoginSchema, userRegisterSchema } from "@flagship/schemas";
+import argon2 from "argon2";
 import type { Request, Response } from "express";
 import jwt, { type JwtPayload } from "jsonwebtoken";
-import { db } from "../config/db";
+import type * as z from "zod";
+import { db, eq, users } from "../config/db";
+import { env } from "../config/env";
 import { generateAccessToken, generateRefreshToken } from "../config/util";
+import type { TypedRequest } from "./types";
 
-require("dotenv").config();
+type UserLogin = z.infer<typeof userLoginSchema>;
+type UserRegister = z.infer<typeof userRegisterSchema>;
 
-const { REFRESH_SECRET, NODE_ENV } = process.env;
+const { REFRESH_SECRET, NODE_ENV, AUTH_SECRET } = env;
 
-require("dotenv").config();
-
-export const registerUser = async (req: Request, res: Response) => {
+export const registerUser = async (
+	req: TypedRequest<UserRegister>,
+	res: Response,
+) => {
 	try {
-		const { email, firstName, lastName, password } = req.body;
+		const { email, name, password } = req.body;
 
-		if (!email || !firstName || !lastName || !password) {
+		if (!email || !name || !password) {
 			return res.status(400).json({ error: "Please fill in all fields" });
 		}
 
-		const userExists = await db.user.findFirst({
-			where: { email },
-		});
+		const [user] = await db
+			.select({ id: users.id, email: users.email })
+			.from(users)
+			.where(eq(users.email, email));
 
-		if (userExists) {
+		if (user) {
 			return res.status(400).json({ error: "User already exists" });
 		}
 
-		const hashedPassword = await bcrypt.hash(password, 12);
-
-		const newUser = await db.user.create({
-			data: {
-				firstName,
-				lastName,
-				email,
-				password: hashedPassword,
-			},
+		const hashedPassword = await argon2.hash(password, {
+			secret: Buffer.from(AUTH_SECRET),
 		});
 
+		const [newUser] = await db
+			.insert(users)
+			.values({
+				email,
+				name,
+				password: hashedPassword,
+			})
+			.returning({
+				id: users.id,
+				name: users.name,
+			});
+
 		if (newUser) {
-			const { id, firstName, lastName, email } = newUser;
+			const { id, name } = newUser;
 
 			const accessToken = generateAccessToken({
 				id,
-				firstName,
-				lastName,
-				email,
+				name,
 			});
 
 			const refreshToken = generateRefreshToken({
 				id,
-				firstName,
-				lastName,
-				email,
+				name,
 			});
 
 			res
@@ -65,9 +73,7 @@ export const registerUser = async (req: Request, res: Response) => {
 
 			return res.status(201).json({
 				id,
-				firstName,
-				lastName,
-				email,
+				name,
 				accessToken,
 			});
 		} else {
@@ -79,7 +85,10 @@ export const registerUser = async (req: Request, res: Response) => {
 	}
 };
 
-export const loginUser = async (req: Request, res: Response) => {
+export const loginUser = async (
+	req: TypedRequest<UserLogin>,
+	res: Response,
+) => {
 	try {
 		const { email, password } = req.body;
 
@@ -87,33 +96,34 @@ export const loginUser = async (req: Request, res: Response) => {
 			return res.status(400).json({ error: "Please fill in all fields" });
 		}
 
-		const user = await db.user.findFirst({
-			where: { email },
-		});
+		const [user] = await db
+			.select({
+				id: users.id,
+				name: users.name,
+				password: users.password,
+			})
+			.from(users)
+			.where(eq(users.email, email));
 
 		if (!user) {
 			return res.status(400).json({ error: "Invalid credentials" });
 		}
 
-		const passwordMatch = await bcrypt.compare(password, user.password);
-		if (!passwordMatch) {
+		const verifyPassword = await argon2.verify(user.password, password);
+		if (!verifyPassword) {
 			return res.status(400).json({ error: "Invalid credentials" });
 		}
 
-		const { id, firstName, lastName, email: userEmail } = user;
+		const { id, name } = user;
 
 		const accessToken = generateAccessToken({
 			id,
-			firstName,
-			lastName,
-			email,
+			name,
 		});
 
 		const refreshToken = generateRefreshToken({
 			id,
-			firstName,
-			lastName,
-			email,
+			name,
 		});
 
 		res
@@ -127,9 +137,7 @@ export const loginUser = async (req: Request, res: Response) => {
 
 		return res.status(201).json({
 			id,
-			firstName,
-			lastName,
-			email: userEmail,
+			name,
 			accessToken,
 		});
 	} catch (err) {
@@ -140,7 +148,7 @@ export const loginUser = async (req: Request, res: Response) => {
 
 export const logoutUser = async (req: Request, res: Response) => {
 	try {
-		console.log("logout console:", req.cookies["refreshToken"]);
+		console.log("logout console:", req.cookies.refreshToken);
 		res.clearCookie("refreshToken");
 		return res.status(200).json({ message: "User successfully logged out" });
 	} catch (err) {
@@ -150,25 +158,20 @@ export const logoutUser = async (req: Request, res: Response) => {
 };
 
 export const refreshUser = async (req: Request, res: Response) => {
-	const refreshToken = req.cookies["refreshToken"];
+	const refreshToken = req.cookies.refreshToken;
 
 	if (!refreshToken) {
 		return res.status(401).json({ error: "Not authorised, no refresh token!" });
 	}
 
 	try {
-		const { id } = jwt.verify(refreshToken, REFRESH_SECRET!) as JwtPayload;
+		const { id } = jwt.verify(refreshToken, REFRESH_SECRET) as JwtPayload;
 
-		const user = await db.user.findFirst({
-			where: { id },
-			select: {
-				id: true,
-				firstName: true,
-				lastName: true,
-				email: true,
-				password: false,
-			},
-		});
+		const [user] = await db
+			.select({ id: users.id, name: users.name })
+			.from(users)
+			.where(eq(users.id, id))
+			.limit(1);
 
 		if (!user) {
 			return res.status(400).json({ error: "User not found" });
@@ -189,7 +192,7 @@ export const refreshUser = async (req: Request, res: Response) => {
 
 export const updateUser = async (req: Request, res: Response) => {
 	try {
-		const { firstName, lastName } = req.body;
+		const { name } = req.body;
 
 		if (!req.user) {
 			return res
@@ -197,16 +200,13 @@ export const updateUser = async (req: Request, res: Response) => {
 				.json({ error: "Not authoriized, please login or register" });
 		}
 
-		const { id: userId } = req.user;
+		const { id } = req.user;
 
-		const updatedUser = await db.user.update({
-			where: { id: userId },
-			data: {
-				firstName,
-				lastName,
-			},
-			select: { firstName: true, lastName: true, email: true },
-		});
+		const updatedUser = await db
+			.update(users)
+			.set({ name })
+			.where(eq(users.id, id))
+			.returning({ id: users.id, name: users.name });
 
 		res.status(200).json(updatedUser);
 	} catch (err) {
@@ -222,13 +222,13 @@ export const deleteUser = async (req: Request, res: Response) => {
 			.json({ error: "Not authoriized, please login or register" });
 	}
 
-	const { id: userId } = req.user;
+	const { id } = req.user;
 
 	try {
-		const deletedUser = await db.user.delete({
-			where: { id: userId },
-			select: { firstName: true, lastName: true, email: true },
-		});
+		const deletedUser = await db
+			.delete(users)
+			.where(eq(users.id, id))
+			.returning({ id: users.id, name: users.id });
 
 		res.status(200).json({ message: "User deleted", user: deletedUser });
 	} catch (err) {

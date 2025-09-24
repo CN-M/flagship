@@ -1,7 +1,5 @@
+import { userLoginSchema, userRegisterSchema } from "@flagship/schemas";
 import express, { type Router } from "express";
-
-const router: Router = express.Router();
-
 import {
 	deleteUser,
 	loginUser,
@@ -10,12 +8,14 @@ import {
 	registerUser,
 	updateUser,
 } from "../controllers/userController";
-import { protect } from "../middleware/authMiddleware";
+import { protect, validateBody } from "../middleware";
+
+const router: Router = express.Router();
 
 router.route("/").delete(protect, deleteUser).put(protect, updateUser);
 
-router.route("/login").post(loginUser);
-router.route("/register").post(registerUser);
+router.route("/login").post(validateBody(userLoginSchema), loginUser);
+router.route("/register").post(validateBody(userRegisterSchema), registerUser);
 router.route("/logout").post(logoutUser);
 router.route("/refresh").post(refreshUser);
 

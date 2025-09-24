@@ -27,6 +27,7 @@ export const apiSchema = {
 
 	// Auth Middleware
 	SECRET: z.string().min(43),
+	AUTH_SECRET: z.string().min(43),
 	REFRESH_SECRET: z.string().min(43),
 };
 

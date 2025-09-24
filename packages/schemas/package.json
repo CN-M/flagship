@@ -12,6 +12,7 @@
 	"keywords": [],
 	"author": "",
 	"license": "ISC",
+	"private": "true",
 	"dependencies": {
 		"zod": "^4.1.11"
 	}

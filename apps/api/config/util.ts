@@ -3,15 +3,15 @@ import { env } from "./env";
 
 const { SECRET, REFRESH_SECRET } = env;
 
-type Tenant = {
+type User = {
 	id: string;
 	name: string;
 };
 
-export const generateAccessToken = (tenant: Tenant) => {
-	return jwt.sign(tenant, SECRET, { expiresIn: "1h" });
+export const generateAccessToken = (user: User) => {
+	return jwt.sign(user, SECRET, { expiresIn: "1h" });
 };
 
-export const generateRefreshToken = (tenant: Tenant) => {
-	return jwt.sign(tenant, REFRESH_SECRET, { expiresIn: "15d" });
+export const generateRefreshToken = (user: User) => {
+	return jwt.sign(user, REFRESH_SECRET, { expiresIn: "15d" });
 };
