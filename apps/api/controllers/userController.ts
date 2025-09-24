@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import type { Request, Response } from "express";
 import jwt, { type JwtPayload } from "jsonwebtoken";
-import { prisma } from "../config/db";
+import { db } from "../config/db";
 import { generateAccessToken, generateRefreshToken } from "../config/util";
 
 require("dotenv").config();
@@ -18,7 +18,7 @@ export const registerUser = async (req: Request, res: Response) => {
 			return res.status(400).json({ error: "Please fill in all fields" });
 		}
 
-		const userExists = await prisma.user.findFirst({
+		const userExists = await db.user.findFirst({
 			where: { email },
 		});
 
@@ -28,7 +28,7 @@ export const registerUser = async (req: Request, res: Response) => {
 
 		const hashedPassword = await bcrypt.hash(password, 12);
 
-		const newUser = await prisma.user.create({
+		const newUser = await db.user.create({
 			data: {
 				firstName,
 				lastName,
@@ -87,7 +87,7 @@ export const loginUser = async (req: Request, res: Response) => {
 			return res.status(400).json({ error: "Please fill in all fields" });
 		}
 
-		const user = await prisma.user.findFirst({
+		const user = await db.user.findFirst({
 			where: { email },
 		});
 
@@ -159,7 +159,7 @@ export const refreshUser = async (req: Request, res: Response) => {
 	try {
 		const { id } = jwt.verify(refreshToken, REFRESH_SECRET!) as JwtPayload;
 
-		const user = await prisma.user.findFirst({
+		const user = await db.user.findFirst({
 			where: { id },
 			select: {
 				id: true,
@@ -199,7 +199,7 @@ export const updateUser = async (req: Request, res: Response) => {
 
 		const { id: userId } = req.user;
 
-		const updatedUser = await prisma.user.update({
+		const updatedUser = await db.user.update({
 			where: { id: userId },
 			data: {
 				firstName,
@@ -225,7 +225,7 @@ export const deleteUser = async (req: Request, res: Response) => {
 	const { id: userId } = req.user;
 
 	try {
-		const deletedUser = await prisma.user.delete({
+		const deletedUser = await db.user.delete({
 			where: { id: userId },
 			select: { firstName: true, lastName: true, email: true },
 		});

@@ -2,22 +2,18 @@ import "colors";
 import compression from "compression";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import dotenv from "dotenv";
 import express, { type Express } from "express";
 import helmet from "helmet";
 import morgan from "morgan";
+import { env } from "./config/env";
 
-dotenv.config();
-
-import { catch404, errorHandler } from "./middleware/errorMiddleware";
+import { catch404, errorHandler } from "./middleware";
 
 // Import Routes
-import taskRoute from "./routes/taskRoute";
+import flagRoute from "./routes/flagRoute";
 import userRoute from "./routes/userRoute";
 
-const { PORT, NODE_ENV } = process.env;
-const port = PORT || 3000;
-const node_env = NODE_ENV || "development";
+const { PORT, NODE_ENV } = env;
 
 const app: Express = express();
 app.set("trust proxy", 1);
@@ -25,7 +21,7 @@ app.set("trust proxy", 1);
 const allowedOrigins = ["http://localhost:5173", "http://127.0.0.1:5173"];
 
 // Middleware
-app.use(morgan("dev"));
+app.use(morgan(NODE_ENV === "development" ? "dev" : "combined"));
 app.use(cookieParser());
 app.use(
 	cors({
@@ -45,12 +41,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/account", userRoute);
-app.use("/", taskRoute);
+app.use("/", flagRoute);
 
 // Error Middleware
 app.use(catch404);
 app.use(errorHandler);
 
-app.listen(port, () => {
-	console.log(`Server running on http://localhost:${port}`.cyan);
+app.listen(PORT, () => {
+	console.log(`Server running on http://localhost:${PORT}`.cyan);
 });

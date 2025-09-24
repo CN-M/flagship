@@ -1,25 +1,28 @@
 import type { NextFunction, Request, Response } from "express";
 import jwt, { type JwtPayload, TokenExpiredError } from "jsonwebtoken";
-import { prisma } from "../config/db";
-
+import { db, eq, tenants } from "../config/db";
+import { env } from "../config/env";
 import { generateAccessToken } from "../config/util";
 
-require("dotenv").config();
-
-const { SECRET, REFRESH_SECRET } = process.env;
+const { SECRET, REFRESH_SECRET } = env;
 
 declare global {
 	namespace Express {
-		interface User {
-			id: number;
-			email: string;
-			firstName: string;
-			lastName: string;
-			//   password: string | null;
+		// interface User {
+		// 	id: number;
+		// 	email: string;
+		// 	firstName: string;
+		// 	lastName: string;
+		// }
+
+		interface Tenant {
+			id: string;
+			name: string;
 		}
 
 		interface Request {
-			user?: User;
+			// user?: User;
+			tenant?: Tenant;
 		}
 	}
 }
@@ -29,13 +32,12 @@ export const protect = async (
 	res: Response,
 	next: NextFunction,
 ) => {
-	const accessToken =
-		req.headers.authorization && req.headers.authorization.startsWith("Bearer")
-			? req.headers.authorization.split(" ")[1]
-			: null;
+	const accessToken = req.headers.authorization?.startsWith("Bearer")
+		? req.headers.authorization.split(" ")[1]
+		: null;
 
-	const refreshToken = req.cookies["refreshToken"]
-		? req.cookies["refreshToken"]
+	const refreshToken = req.cookies.refreshToken
+		? req.cookies.refreshToken
 		: null;
 
 	if (!accessToken || !refreshToken) {
@@ -43,50 +45,38 @@ export const protect = async (
 	}
 
 	try {
-		const { id } = jwt.verify(accessToken, SECRET!) as JwtPayload;
+		const { id } = jwt.verify(accessToken, SECRET) as JwtPayload;
 
-		const user = await prisma.user.findFirst({
-			where: { id },
-			select: {
-				id: true,
-				firstName: true,
-				lastName: true,
-				email: true,
-				password: false,
-			},
-		});
+		const [tenant] = await db
+			.select({ id: tenants.id, name: tenants.name })
+			.from(tenants)
+			.where(eq(tenants.id, id));
 
-		if (!user) {
-			return res.status(400).json({ error: "User not found" });
+		if (!tenant) {
+			return res.status(400).json({ error: "Tenant not found" });
 		}
 
-		req.user = user;
+		req.tenant = tenant;
 		next();
 	} catch (err) {
 		if (err instanceof TokenExpiredError) {
 			try {
-				const { id } = jwt.verify(refreshToken, REFRESH_SECRET!) as JwtPayload;
+				const { id } = jwt.verify(refreshToken, REFRESH_SECRET) as JwtPayload;
 
-				const user = await prisma.user.findFirst({
-					where: { id },
-					select: {
-						id: true,
-						firstName: true,
-						lastName: true,
-						email: true,
-						password: false,
-					},
-				});
+				const [tenant] = await db
+					.select()
+					.from(tenants)
+					.where(eq(tenants.id, id));
 
-				if (!user) {
-					return res.status(400).json({ error: "User not found" });
+				if (!tenant) {
+					return res.status(400).json({ error: "Tenant not found" });
 				}
 
-				const newAccessToken = generateAccessToken(user);
+				const newAccessToken = generateAccessToken(tenant);
 				console.log("New Access Token Generated");
 
 				res.header("authorization", newAccessToken);
-				req.user = user;
+				req.tenant = tenant;
 				next();
 			} catch (err) {
 				console.error("Error:", err);

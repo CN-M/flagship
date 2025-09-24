@@ -1,20 +1,17 @@
 import jwt from "jsonwebtoken";
+import { env } from "./env";
 
-require("dotenv").config();
+const { SECRET, REFRESH_SECRET } = env;
 
-const { SECRET, REFRESH_SECRET } = process.env;
-
-type User = {
-	id: number;
-	firstName: string;
-	lastName: string;
-	email: string;
+type Tenant = {
+	id: string;
+	name: string;
 };
 
-export const generateAccessToken = (user: User) => {
-	return jwt.sign(user, SECRET!, { expiresIn: "1h" });
+export const generateAccessToken = (tenant: Tenant) => {
+	return jwt.sign(tenant, SECRET, { expiresIn: "1h" });
 };
 
-export const generateRefreshToken = (user: User) => {
-	return jwt.sign(user, REFRESH_SECRET!, { expiresIn: "15d" });
+export const generateRefreshToken = (tenant: Tenant) => {
+	return jwt.sign(tenant, REFRESH_SECRET, { expiresIn: "15d" });
 };

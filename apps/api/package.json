@@ -10,7 +10,6 @@
 		"start": "node dist/server/server.js",
 		"dev-server": "nodemon server/server.ts",
 		"dev": "pnpm watch && \"ts-node server/server.ts\"",
-
 		"prisma:generate": "prisma generate",
 		"prisma:studio": "prisma studio",
 		"prisma:migrate": "prisma migrate dev",
@@ -23,6 +22,8 @@
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
+		"@flagship/db": "workspace:*",
+		"@flagship/env": "workspace:*",
 		"bcryptjs": "^3.0.2",
 		"colors": "^1.4.0",
 		"compression": "^1.8.1",
@@ -33,10 +34,12 @@
 		"helmet": "^8.1.0",
 		"http-errors": "^2.0.0",
 		"jsonwebtoken": "^9.0.2",
-		"morgan": "^1.10.1"
+		"morgan": "^1.10.1",
+		"zod": "^4.1.11"
 	},
 	"devDependencies": {
 		"@flagship/typescript-config": "workspace:*",
+		"@flagship/schemas": "workspace:*",
 		"@types/compression": "^1.8.1",
 		"@types/cookie-parser": "^1.4.9",
 		"@types/cors": "^2.8.19",

@@ -20,6 +20,12 @@ importers:
 
   apps/api:
     dependencies:
+      '@flagship/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@flagship/env':
+        specifier: workspace:*
+        version: link:../../packages/env
       bcryptjs:
         specifier: ^3.0.2
         version: 3.0.2
@@ -53,7 +59,13 @@ importers:
       morgan:
         specifier: ^1.10.1
         version: 1.10.1
+      zod:
+        specifier: ^4.1.11
+        version: 4.1.11
     devDependencies:
+      '@flagship/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
       '@flagship/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
@@ -153,9 +165,7 @@ importers:
         specifier: 5.9.2
         version: 5.9.2
 
-  packages/db: {}
-
-  packages/drizzle:
+  packages/db:
     dependencies:
       '@flagship/env':
         specifier: workspace:*
@@ -172,9 +182,6 @@ importers:
       pg:
         specifier: ^8.16.3
         version: 8.16.3
-      zod:
-        specifier: ^4.1.11
-        version: 4.1.11
     devDependencies:
       '@types/pg':
         specifier: ^8.15.5
@@ -201,6 +208,8 @@ importers:
       '@flagship/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+
+  packages/prisma: {}
 
   packages/schemas:
     dependencies:

@@ -1,17 +1,17 @@
 import type { NextFunction, Request, Response } from "express";
-import createError from "http-errors";
+import createError, { type HttpError } from "http-errors";
 
 // Catch 404 errors and forward to error handler
-export const catch404 = (req: Request, res: Response, next: NextFunction) => {
+export const catch404 = (_req: Request, _res: Response, next: NextFunction) => {
 	next(createError(404));
 };
 
 // Error Handler
 export const errorHandler = (
-	err: any,
+	err: HttpError,
 	req: Request,
 	res: Response,
-	next: NextFunction,
+	_next: NextFunction,
 ) => {
 	// Set locals, only providing error in development
 	res.locals.message = err.message;
